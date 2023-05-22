@@ -9,7 +9,7 @@ jobs:
       - uses: actions/checkout@v2
       # Here is the deployment action
       - name: Upload from public_html via FTP
-        uses: airvzxf/ftp-deployment-action@latest
+        uses: airvzxf/ftp-deployment-action@master
         with:
           server: 20.65.92.13
           username: admin_mm
