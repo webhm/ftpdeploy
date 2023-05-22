@@ -11,7 +11,7 @@ jobs:
     - name: 📂 Sync files
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
-        server: api.metrovirtual.hospitalmetropolitano.org
+        server: 20.65.92.13
         username: admin_mm
         password: 1501128480
         port: 21
