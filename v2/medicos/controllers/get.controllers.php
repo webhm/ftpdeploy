@@ -13,7 +13,7 @@ use app\models\medicos as Model;
 use Ocrend\Kernel\Helpers as Helper;
 
 $app->get('/', function () use ($app) {
-    return $app->json();
+    return $app->json(array());
 });
 
 # Resultados Imagen
