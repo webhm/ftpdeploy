@@ -248,7 +248,7 @@ class Pacientes extends Models implements IModels
                         e.fk_persona           = f.pk_codigo   ORDER BY a.fecha_admision DESC ";
 
             $h = $ora->Select($sql);
-            $r = $ora->FetchRow($h);
+            $r = $ora->FetchAll($h);
 
             return $r;
 
