@@ -17,6 +17,6 @@ echo "Select tests...\n";
 echo "select sysdate from dual\n";
 $h = $ora->Select("select sysdate from dual");
 $r = $ora->FetchArray($h);
-var_dump($r);
+print_r($r);
 
 ?>
