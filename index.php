@@ -13,7 +13,7 @@ $ora->SetAutoCommit(true);
 $h = $ora->Select("select sysdate from dual");
 $r = $ora->FetchObject($h);
 
-echo "ssss";
+echo "sssshm";
 
 print_r($r);
 
