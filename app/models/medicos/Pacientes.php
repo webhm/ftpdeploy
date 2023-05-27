@@ -208,6 +208,8 @@ class Pacientes extends Models implements IModels
 
             $codMedico = (int) $this->user->codMedico;
 
+            $codMedico = '0';
+
             # seteo de valores para paginacion
             $fecha = date('d-m-Y');
 
