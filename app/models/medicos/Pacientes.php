@@ -204,109 +204,17 @@ class Pacientes extends Models implements IModels
 
             global $config, $http;
 
-            $sql = " SELECT *
-            FROM (
-            SELECT b.*, ROWNUM AS NUM
-            FROM (
+            $ora = new Model\ORACLE; //::CreateInstance("XE", "olton", "yfnfkmz", "RUSSIAN_CIS.AL32UTF8"); 
+            $ora->Connect("172.16.3.247:1521/conclina", "mchang", "1501508480");
 
+            $ora->SetFetchMode(OCI_ASSOC);
+            $ora->SetAutoCommit(true);
 
-                SELECT a.discriminante, TRUNC (a.fecha_admision) fecha_admision, TO_CHAR(a.hora_admision, 'HH24:MM') AS hora_admision, a.pk_numero_admision nro_admision, a.pk_fk_paciente hc,
+            $h = $ora->Select("select sysdate from dual");
+            $r = $ora->FetchObject($h);
 
-                    fun_calcula_anios_a_fecha(f.fecha_nacimiento,TRUNC(a.fecha_admision)) edad,
+            return $r;
 
-                    f.primer_apellido || ' ' || f.segundo_apellido || ' ' || f.primer_nombre || ' ' || f.segundo_nombre nombre_paciente,
-
-                    b.pk_fk_medico cod_medico, fun_busca_nombre_medico(b.pk_fk_medico) nombre_medico, d.descripcion especialidad,
-
-                    fun_busca_ubicacion_corta(1,a.pk_fk_paciente,a.pk_numero_admision) nro_habitacion,
-
-                    fun_busca_diagnostico(1,a.pk_fk_paciente, a.pk_numero_admision) dg_principal
-
-                    FROM cad_admisiones a, cad_medicos_admision b, edm_medicos_especialidad c, aas_especialidades d, cad_pacientes e, bab_personas f
-
-                    WHERE a.alta_clinica         IS NULL            AND
-
-                        a.pre_admision         = 'N'              AND
-
-                        a.anulado              = 'N'              AND
-
-                        a.discriminante        IN ('HPN','EMA')   AND
-
-                        a.pk_fk_paciente       = b.pk_fk_paciente AND
-
-                        a.pk_numero_admision   = b.pk_fk_admision AND
-
-                        b.clasificacion_medico = 'TRA'            AND
-
-                        b.pk_fk_medico         = c.pk_fk_medico   AND
-
-                        c.principal            = 'S'              AND
-
-                        c.pk_fk_especialidad   = d.pk_codigo      AND
-
-                        a.pk_fk_paciente       = e.pk_nhcl        AND
-
-                        e.fk_persona           = f.pk_codigo
-
-                        ORDER BY TRUNC (a.fecha_admision) DESC
-
-            ) b
-            WHERE ROWNUM <= " . $this->length . "
-            )
-            WHERE NUM > " . $this->start . "
-            ";
-
-            # Conectar base de datos
-            $this->conectar_Oracle();
-
-            $this->setSpanishOracle();
-
-            # Execute
-            $stmt = $this->_conexion->query($sql);
-
-            $this->_conexion->close();
-
-            $data = $stmt->fetchAll();
-
-            # NO EXITEN RESULTADOS
-            $this->notResults($data);
-
-            # Datos de usuario cuenta activa
-            $resultados_tra = array();
-            $resultados_inter = array();
-            $resultados_ema = array();
-            $resultados_hpn = array();
-
-            $time = new DateTime();
-            $nuevaHora = strtotime('-2 days', $time->getTimestamp());
-            $menosHora = date('Y-m-d', $nuevaHora);
-            $tiempoControl = strtotime($menosHora);
-
-            $nuevaHoraHosp = strtotime('-300 days', $time->getTimestamp());
-            $menosHoraHosp = date('Y-m-d', $nuevaHoraHosp);
-            $tiempoControlHosp = strtotime($menosHoraHosp);
-
-            foreach ($data as $key) {
-
-                $fechaFormat = strtotime($key['FECHA_ADMISION']);
-
-                if ($fechaFormat > $tiempoControl && $key['DISCRIMINANTE'] == 'EMA') {
-                    $resultados_ema[] = $key;
-                } else {
-                    $resultados_hpn[] = $key;
-                }
-
-            }
-
-            return array(
-                'status' => true,
-                'dataTra' => $resultados_ema,
-                'totalTra' => count($resultados_ema),
-                'dataInter' => $resultados_hpn,
-                'totalInter' => count($resultados_hpn),
-                'codMedico' => $codMedico,
-
-            );
 
         } catch (ModelsException $e) {
 
@@ -315,7 +223,6 @@ class Pacientes extends Models implements IModels
                 'dataTra' => [],
                 'dataInter' => [],
                 'message' => $e->getMessage(),
-                'codMedico' => $codMedico
             );
 
         }

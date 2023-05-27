@@ -1,12 +1,20 @@
 <?php
 
+
+namespace app\models\medicos;
+
+use Ocrend\Kernel\Models\IModels;
+use Ocrend\Kernel\Models\Models;
+use Ocrend\Kernel\Router\IRouter;
+
+
 define('ORA_CHARSET_DEFAULT', 'SPANISH_SPAIN.AL32UTF8');
 define('ORA_CONNECTION_TYPE_DEFAULT', 1);
 define('ORA_CONNECTION_TYPE_PERSISTENT', 2);
 define('ORA_CONNECTION_TYPE_NEW', 3);
 define('ORA_MESSAGES_NOT_CONNECTED', 'Not connected to Oracle instance');
 
-class ORACLE
+class ORACLE extends Models implements IModels
 {
     private static $_instance;
     private $conn_handle;
@@ -74,12 +82,16 @@ class ORACLE
      * Constructor
      * 
      */
-    public function __construct()
+    public function __construct(IRouter $router = null)
     {
+        parent::__construct($router);
+
         $this->SetNlsLang('CL8MSWIN1251');
         $this->SetFetchMode(OCI_ASSOC);
         $this->SetAutoCommit(false);
     }
+
+
 
     /**
      * Connect to Oracle DB
@@ -722,5 +734,7 @@ class ORACLE
     {
         return $this->conn_handle;
     }
+
+
 }
 ?>
