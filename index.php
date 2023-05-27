@@ -14,8 +14,8 @@ $ora->SetAutoCommit(true);
 //  $ora->Update("t1", array("id"=>":id", "name"=>":name"), "name='ttt'", array(":id"=>2, ":name"=>"tt2")); 
 
 /* Select tests *************************************************************************************/
-echo "Select tests...\n";
-echo "select sysdate from dual\n";
+echo "Select tests...\n\n";
+echo "select sysdate from dual\n\n";
 $h = $ora->Select("select sysdate from dual");
 $r = $ora->FetchArray($h);
 print_r($r);
