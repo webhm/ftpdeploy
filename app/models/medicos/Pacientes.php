@@ -481,6 +481,59 @@ class Pacientes extends Models implements IModels
 
             }
 
+
+            $sql = " SELECT *
+            FROM (
+            SELECT b.*, ROWNUM AS NUM
+            FROM (
+
+
+                SELECT a.discriminante, TRUNC (a.fecha_admision) fecha_admision, TO_CHAR(a.hora_admision, 'HH24:MM') AS hora_admision, a.pk_numero_admision nro_admision, a.pk_fk_paciente hc,
+
+                    fun_calcula_anios_a_fecha(f.fecha_nacimiento,TRUNC(a.fecha_admision)) edad,
+
+                    f.primer_apellido || ' ' || f.segundo_apellido || ' ' || f.primer_nombre || ' ' || f.segundo_nombre nombre_paciente,
+
+                    b.pk_fk_medico cod_medico, fun_busca_nombre_medico(b.pk_fk_medico) nombre_medico, d.descripcion especialidad,
+
+                    fun_busca_ubicacion_corta(1,a.pk_fk_paciente,a.pk_numero_admision) nro_habitacion,
+
+                    fun_busca_diagnostico(1,a.pk_fk_paciente, a.pk_numero_admision) dg_principal
+
+                    FROM cad_admisiones a, cad_medicos_admision b, edm_medicos_especialidad c, aas_especialidades d, cad_pacientes e, bab_personas f
+
+                    WHERE a.alta_clinica         IS NULL            AND
+
+                        a.pre_admision         = 'N'              AND
+
+                        a.anulado              = 'N'              AND
+
+                        a.discriminante        IN ('HPN','EMA')   AND
+
+                        a.pk_fk_paciente       = b.pk_fk_paciente AND
+
+                        a.pk_numero_admision   = b.pk_fk_admision AND
+
+                        b.clasificacion_medico = 'TRA'            AND
+
+                        b.pk_fk_medico         = c.pk_fk_medico   AND
+
+                        c.principal            = 'S'              AND
+
+                        c.pk_fk_especialidad   = d.pk_codigo      AND
+
+                        a.pk_fk_paciente       = e.pk_nhcl        AND
+
+                        e.fk_persona           = f.pk_codigo
+
+                        ORDER BY TRUNC (a.fecha_admision) DESC
+
+            ) b
+            WHERE ROWNUM <= " . $this->length . "
+            )
+            WHERE NUM > " . $this->start . "
+            ";
+
             # Conectar base de datos
             $this->conectar_Oracle();
 
