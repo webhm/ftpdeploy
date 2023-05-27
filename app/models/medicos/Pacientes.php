@@ -204,9 +204,9 @@ class Pacientes extends Models implements IModels
 
             global $config, $http;
 
-            $this->getAuthorization();
+            #  $this->getAuthorization();
 
-            $codMedico = (int) $this->user->codMedico;
+            # $codMedico = (int) $this->user->codMedico;
 
             $codMedico = '0';
 
