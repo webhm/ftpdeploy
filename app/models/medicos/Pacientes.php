@@ -288,24 +288,12 @@ class Pacientes extends Models implements IModels
 
             foreach ($data as $key) {
 
-                if ($codMedico == "0") {
+                $fechaFormat = strtotime($key['FECHA_ADMISION']);
 
-                    $fechaFormat = strtotime($key['FECHA_ADMISION']);
-
-                    if ($fechaFormat > $tiempoControl && $key['DISCRIMINANTE'] == 'EMA') {
-                        $resultados_ema[] = $key;
-                    } else {
-                        $resultados_hpn[] = $key;
-                    }
-
+                if ($fechaFormat > $tiempoControl && $key['DISCRIMINANTE'] == 'EMA') {
+                    $resultados_ema[] = $key;
                 } else {
-
-                    if ($key['CLASIFICACION_MEDICO'] == 'TRA') {
-                        $resultados_tra[] = $key;
-                    } else {
-                        $resultados_inter[] = $key;
-                    }
-
+                    $resultados_hpn[] = $key;
                 }
 
             }
