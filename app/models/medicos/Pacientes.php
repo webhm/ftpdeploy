@@ -204,18 +204,101 @@ class Pacientes extends Models implements IModels
 
             global $config, $http;
 
-            $ora = new Model\ORACLE;
-            $ora->Connect("172.16.3.247:1521/conclina", "mchang", "1501508480");
-            $ora->SetFetchMode(OCI_ASSOC);
-            $ora->SetAutoCommit(true);
+            $this->getAuthorization();
 
-            $sql = " SELECT a.discriminante, TRUNC (a.fecha_admision) fecha_admision, a.pk_numero_admision nro_admision, a.pk_fk_paciente hc,
+            $codMedico = (int) $this->user->codMedico;
+
+            # seteo de valores para paginacion
+            $fecha = date('d-m-Y');
+
+            $this->start = (int) $http->query->get('start');
+
+            $this->length = (int) $http->query->get('length');
+
+            if ($this->start >= 10) {
+                $this->length = $this->start + $this->length;
+            }
+
+            $_searchField = (bool) $http->query->get('searchField');
+
+            if ($_searchField != false) {
+
+                $this->searchField = $this->quitar_tildes(mb_strtoupper($this->sanear_string($http->query->get('searchField')), 'UTF-8'));
+
+                $this->searchField = str_replace(" ", "%", $this->searchField);
+
+                // Es Residente
+                if ($codMedico == "0") {
+
+                    $sql = " SELECT *
+                    FROM (
+                    SELECT b.*, ROWNUM AS NUM
+                    FROM (
+
+
+                    SELECT a.discriminante, TRUNC (a.fecha_admision) fecha_admision, TO_CHAR(a.hora_admision, 'HH24:MM') AS hora_admision, a.pk_numero_admision nro_admision, a.pk_fk_paciente hc,
+
+                        fun_calcula_anios_a_fecha(f.fecha_nacimiento,TRUNC(a.fecha_admision)) edad,
+
+                        f.primer_apellido || ' ' || f.segundo_apellido || ' ' || f.primer_nombre || ' ' || f.segundo_nombre nombre_paciente,
+
+                        b.pk_fk_medico cod_medico, fun_busca_nombre_medico(b.pk_fk_medico) nombre_medico, d.descripcion especialidad,
+
+                        fun_busca_ubicacion_corta(1,a.pk_fk_paciente,a.pk_numero_admision) nro_habitacion,
+
+                        fun_busca_diagnostico(1,a.pk_fk_paciente, a.pk_numero_admision) dg_principal
+
+                        FROM cad_admisiones a, cad_medicos_admision b, edm_medicos_especialidad c, aas_especialidades d, cad_pacientes e, bab_personas f
+
+                        WHERE a.alta_clinica         IS NULL            AND
+
+                            a.pre_admision         = 'N'              AND
+
+                            a.anulado              = 'N'              AND
+
+                            a.discriminante        IN ('HPN','EMA')   AND
+
+                            a.pk_fk_paciente       = b.pk_fk_paciente AND
+
+                            a.pk_numero_admision   = b.pk_fk_admision AND
+
+                            b.clasificacion_medico = 'TRA'            AND
+
+                            b.pk_fk_medico         = c.pk_fk_medico   AND
+
+                            c.principal            = 'S'              AND
+
+                            c.pk_fk_especialidad   = d.pk_codigo      AND
+
+                            a.pk_fk_paciente       = e.pk_nhcl        AND
+
+                            e.fk_persona           = f.pk_codigo  AND
+
+                                (f.primer_apellido || ' ' || f.segundo_apellido || ' ' || f.primer_nombre || ' ' || f.segundo_nombre LIKE '%$this->searchField%' )
+
+                                ORDER BY TRUNC (a.fecha_admision) DESC
+
+                    ) b
+                    WHERE ROWNUM <= " . $this->length . "
+                    )
+                    WHERE NUM > " . $this->start . "
+                    ";
+
+                } else {
+
+                    $sql = " SELECT *
+                FROM (
+                SELECT b.*, ROWNUM AS NUM
+                FROM (
+
+
+                    SELECT a.discriminante, TRUNC (a.fecha_admision) fecha_admision, TO_CHAR(a.hora_admision, 'HH24:MM') AS hora_admision, a.pk_numero_admision nro_admision, a.pk_fk_paciente hc,
 
                     fun_calcula_anios_a_fecha(f.fecha_nacimiento,TRUNC(a.fecha_admision)) edad,
 
                     f.primer_apellido || ' ' || f.segundo_apellido || ' ' || f.primer_nombre || ' ' || f.segundo_nombre nombre_paciente,
 
-                    b.pk_fk_medico cod_medico, fun_busca_nombre_medico(b.pk_fk_medico) nombre_medico, d.descripcion especialidad,
+                    b.pk_fk_medico cod_medico, fun_busca_nombre_medico(b.pk_fk_medico) nombre_medico, d.descripcion especialidad, b.clasificacion_medico,
 
                     fun_busca_ubicacion_corta(1,a.pk_fk_paciente,a.pk_numero_admision) nro_habitacion,
 
@@ -235,7 +318,142 @@ class Pacientes extends Models implements IModels
 
                         a.pk_numero_admision   = b.pk_fk_admision AND
 
-                        b.clasificacion_medico = 'TRA'            AND
+                        b.pk_fk_medico         = c.pk_fk_medico   AND
+
+                        c.principal            = 'S'              AND
+
+                        c.pk_fk_especialidad   = d.pk_codigo      AND
+
+                        a.pk_fk_paciente       = e.pk_nhcl        AND
+
+                        e.fk_persona           = f.pk_codigo   AND
+
+                        b.pk_fk_medico LIKE '%$codMedico' AND
+
+                        (f.primer_apellido || ' ' || f.segundo_apellido || ' ' || f.primer_nombre || ' ' || f.segundo_nombre LIKE '%$this->searchField%' )
+
+                        ORDER BY TRUNC (a.fecha_admision) DESC
+
+                ) b
+                WHERE ROWNUM <= " . $this->length . "
+                )
+                WHERE NUM > " . $this->start . "
+                ";
+
+                }
+
+            } elseif ($_searchField != false && $this->isRange($http->query->get('search')['value'])) {
+
+                $this->searchField = explode('-', $http->query->get('search')['value']);
+
+                $desde = $this->searchField[1]; // Valores para busqueda de desde rango de fechas
+                $hasta = $this->searchField[2]; // valor de busqueda para hasta rango de fechas
+
+                $sql = " SELECT *
+                FROM (
+                SELECT b.*, ROWNUM AS NUM
+                FROM (
+                    SELECT *
+                    FROM WEB3_RESULTADOS_LAB NOLOCK WHERE TOT_SC != TOD_DC
+                    AND FECHA >= '$desde'
+                    AND FECHA <= '$hasta'
+                    ORDER BY SC DESC
+                ) b
+                WHERE ROWNUM <= " . $this->length . "
+                )
+                WHERE NUM > " . $this->start . "
+                ";
+
+            } else {
+
+                if ($codMedico == "0") {
+
+                    $sql = " SELECT *
+                FROM (
+                SELECT b.*, ROWNUM AS NUM
+                FROM (
+
+
+                    SELECT a.discriminante, TRUNC (a.fecha_admision) fecha_admision, TO_CHAR(a.hora_admision, 'HH24:MM') AS hora_admision, a.pk_numero_admision nro_admision, a.pk_fk_paciente hc,
+
+                        fun_calcula_anios_a_fecha(f.fecha_nacimiento,TRUNC(a.fecha_admision)) edad,
+
+                        f.primer_apellido || ' ' || f.segundo_apellido || ' ' || f.primer_nombre || ' ' || f.segundo_nombre nombre_paciente,
+
+                        b.pk_fk_medico cod_medico, fun_busca_nombre_medico(b.pk_fk_medico) nombre_medico, d.descripcion especialidad,
+
+                        fun_busca_ubicacion_corta(1,a.pk_fk_paciente,a.pk_numero_admision) nro_habitacion,
+
+                        fun_busca_diagnostico(1,a.pk_fk_paciente, a.pk_numero_admision) dg_principal
+
+                        FROM cad_admisiones a, cad_medicos_admision b, edm_medicos_especialidad c, aas_especialidades d, cad_pacientes e, bab_personas f
+
+                        WHERE a.alta_clinica         IS NULL            AND
+
+                            a.pre_admision         = 'N'              AND
+
+                            a.anulado              = 'N'              AND
+
+                            a.discriminante        IN ('HPN','EMA')   AND
+
+                            a.pk_fk_paciente       = b.pk_fk_paciente AND
+
+                            a.pk_numero_admision   = b.pk_fk_admision AND
+
+                            b.clasificacion_medico = 'TRA'            AND
+
+                            b.pk_fk_medico         = c.pk_fk_medico   AND
+
+                            c.principal            = 'S'              AND
+
+                            c.pk_fk_especialidad   = d.pk_codigo      AND
+
+                            a.pk_fk_paciente       = e.pk_nhcl        AND
+
+                            e.fk_persona           = f.pk_codigo
+
+                            ORDER BY TRUNC (a.fecha_admision) DESC
+
+                ) b
+                WHERE ROWNUM <= " . $this->length . "
+                )
+                WHERE NUM > " . $this->start . "
+                ";
+
+                } else {
+
+                    $sql = " SELECT *
+                FROM (
+                SELECT b.*, ROWNUM AS NUM
+                FROM (
+
+
+
+                    SELECT a.discriminante, TRUNC (a.fecha_admision) fecha_admision, TO_CHAR(a.hora_admision, 'HH24:MM') AS hora_admision, a.pk_numero_admision nro_admision, a.pk_fk_paciente hc,
+
+                    fun_calcula_anios_a_fecha(f.fecha_nacimiento,TRUNC(a.fecha_admision)) edad,
+
+                    f.primer_apellido || ' ' || f.segundo_apellido || ' ' || f.primer_nombre || ' ' || f.segundo_nombre nombre_paciente,
+
+                    b.pk_fk_medico cod_medico, fun_busca_nombre_medico(b.pk_fk_medico) nombre_medico, d.descripcion especialidad, b.clasificacion_medico,
+
+                    fun_busca_ubicacion_corta(1,a.pk_fk_paciente,a.pk_numero_admision) nro_habitacion,
+
+                    fun_busca_diagnostico(1,a.pk_fk_paciente, a.pk_numero_admision) dg_principal
+
+                    FROM cad_admisiones a, cad_medicos_admision b, edm_medicos_especialidad c, aas_especialidades d, cad_pacientes e, bab_personas f
+
+                    WHERE a.alta_clinica         IS NULL            AND
+
+                        a.pre_admision         = 'N'              AND
+
+                        a.anulado              = 'N'              AND
+
+                        a.discriminante        IN ('HPN','EMA')   AND
+
+                        a.pk_fk_paciente       = b.pk_fk_paciente AND
+
+                        a.pk_numero_admision   = b.pk_fk_admision AND
 
                         b.pk_fk_medico         = c.pk_fk_medico   AND
 
@@ -245,13 +463,103 @@ class Pacientes extends Models implements IModels
 
                         a.pk_fk_paciente       = e.pk_nhcl        AND
 
-                        e.fk_persona           = f.pk_codigo   ORDER BY a.fecha_admision DESC ";
+                        e.fk_persona           = f.pk_codigo   AND
 
-            $h = $ora->Select($sql);
-            $r = $ora->FetchAll($h);
+                        b.pk_fk_medico LIKE '%$codMedico'
 
-            return $r;
+                         ORDER BY TRUNC(a.fecha_admision) DESC
 
+                ) b
+                WHERE ROWNUM <= " . $this->length . "
+                )
+                WHERE NUM > " . $this->start . "
+                ";
+
+                }
+
+            }
+
+            # Conectar base de datos
+            $this->conectar_Oracle();
+
+            $this->setSpanishOracle();
+
+            # Execute
+            $stmt = $this->_conexion->query($sql);
+
+            $this->_conexion->close();
+
+            $data = $stmt->fetchAll();
+
+            # NO EXITEN RESULTADOS
+            $this->notResults($data);
+
+            # Datos de usuario cuenta activa
+            $resultados_tra = array();
+            $resultados_inter = array();
+            $resultados_ema = array();
+            $resultados_hpn = array();
+
+            $time = new DateTime();
+            $nuevaHora = strtotime('-2 days', $time->getTimestamp());
+            $menosHora = date('Y-m-d', $nuevaHora);
+            $tiempoControl = strtotime($menosHora);
+
+            $nuevaHoraHosp = strtotime('-300 days', $time->getTimestamp());
+            $menosHoraHosp = date('Y-m-d', $nuevaHoraHosp);
+            $tiempoControlHosp = strtotime($menosHoraHosp);
+
+            foreach ($data as $key) {
+
+                if ($codMedico == "0") {
+
+                    $fechaFormat = strtotime($key['FECHA_ADMISION']);
+
+                    if ($fechaFormat > $tiempoControl && $key['DISCRIMINANTE'] == 'EMA') {
+                        $resultados_ema[] = $key;
+                    } else {
+                        $resultados_hpn[] = $key;
+                    }
+
+                } else {
+
+                    if ($key['CLASIFICACION_MEDICO'] == 'TRA') {
+                        $resultados_tra[] = $key;
+                    } else {
+                        $resultados_inter[] = $key;
+                    }
+
+                }
+
+            }
+
+            if ($codMedico == "0") {
+
+                # Devolver Información
+                return array(
+                    'status' => true,
+                    'dataTra' => $resultados_ema,
+                    'totalTra' => count($resultados_ema),
+                    'dataInter' => $resultados_hpn,
+                    'totalInter' => count($resultados_hpn),
+                    'codMedico' => $codMedico,
+
+                );
+
+            } else {
+
+                # Devolver Información
+                return array(
+                    'status' => true,
+                    'dataTra' => $resultados_tra,
+                    'totalTra' => count($resultados_tra),
+                    'dataInter' => $resultados_inter,
+                    'totalInter' => count($resultados_inter),
+                    'codMedico' => $codMedico,
+
+                );
+
+            }
 
         } catch (ModelsException $e) {
 
@@ -260,6 +568,7 @@ class Pacientes extends Models implements IModels
                 'dataTra' => [],
                 'dataInter' => [],
                 'message' => $e->getMessage(),
+                'codMedico' => $codMedico
             );
 
         }
