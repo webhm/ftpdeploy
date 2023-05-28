@@ -53,22 +53,21 @@ class Pacientes extends Models implements IModels
     private function getAuthorization()
     {
 
-        try {
 
-            global $http;
 
-            $token = $http->headers->get("Authorization");
+        global $http;
 
-            $auth = new Model\Auth;
-            $key = $auth->GetData($token);
+        $token = $http->headers->get("Authorization");
 
-            $this->user = $key;
+        $auth = new Model\Auth;
+        $key = $auth->GetData($token);
 
-        } catch (ModelsException $e) {
+        $this->user = $key;
 
-            return array('status' => false, 'message' => $e->getMessage());
-
+        if ($this->user == null) {
+            throw new ModelsException('No Login');
         }
+
     }
 
     private function setParameters()
