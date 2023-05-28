@@ -227,7 +227,7 @@ class Pacientes extends Models implements IModels
                 $this->searchField = str_replace(" ", "%", $this->searchField);
 
                 // Es Residente
-                if ($codMedico == "0") {
+                if ($codMedico == 0) {
 
                     $sql = " SELECT *
                     FROM (
@@ -365,7 +365,7 @@ class Pacientes extends Models implements IModels
 
             } else {
 
-                if ($codMedico == "0") {
+                if ($codMedico == 0) {
 
                     $sql = " SELECT *
                 FROM (
@@ -510,7 +510,7 @@ class Pacientes extends Models implements IModels
 
             foreach ($data as $key) {
 
-                if ($codMedico == "0") {
+                if ($codMedico == 0) {
 
                     $fechaFormat = strtotime($key['FECHA_ADMISION']);
 
@@ -532,7 +532,7 @@ class Pacientes extends Models implements IModels
 
             }
 
-            if ($codMedico == "0") {
+            if ($codMedico == 0) {
 
                 # Devolver Información
                 return array(
